@@ -1,17 +1,38 @@
 require_relative "../../config/environment.rb"
 
-def greeting
+################ APP RUNNER ##############################################
+
+def app_runner
     puts "Welcome to ActiveMusicRecords"
+    run_initial_menu
 end
 
-################ INITIAL MENU ##############################################
+################ INITIAL MENU RUNNER ##############################################
+
+def run_initial_menu
+    initial_menu
+    input = gets.chomp
+
+    case input
+    when "1"
+        user = log_in
+        run_home_menu(user)
+    when "2"
+        sign_up
+        run_initial_menu
+    when "3"
+        exit
+    else
+        puts "Unkown option!"
+        initial_menu
+    end 
+end
+
 def initial_menu
     puts "What would you like to do?" 
     puts "1. Log in"
     puts "2. Sign up"
     puts "3. Exit"
-    input = gets.chomp
-    initial_logic(input)
 end
 
 def log_in
@@ -23,7 +44,6 @@ def log_in
     else
         user = User.find_by(name: username)
     end
-    home_menu(user)
 end
 
 
@@ -34,26 +54,15 @@ def sign_up
         puts "Username already exists!"
         sign_up
     else
+        puts "User created successfully!!"
         User.create(name: username)
     end
-    log_in
+
 end
 
-def initial_logic(input)
-    case input
-    when "1"
-        log_in
-    when "2"
-        sign_up
-    when "3"
-        exit
-    else
-        puts "Unkown option!"
-        initial_menu
-    end
-end
 
 ################ HOME MENU ##############################################
+
 def home_menu(user)
     puts "What would you like to do?"
     puts "1. Create new playlist"

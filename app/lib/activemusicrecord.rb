@@ -1,57 +1,65 @@
 require_relative "../../config/environment.rb"
 
-def greeting
+################ APP RUNNER ##############################################
+
+def app_runner
     puts "Welcome to ActiveMusicRecords"
+    run_initial_menu
 end
 
-################ INITIAL MENU ##############################################
+################ INITIAL MENU RUNNER ##############################################
+
+def run_initial_menu
+    initial_menu
+    input = gets.chomp
+
+    case input
+    when "1"
+        user = log_in
+        run_home_menu(user)
+    when "2"
+        sign_up
+        run_initial_menu
+    when "3"
+        exit
+    else
+        puts "\nUnkown option!"
+        initial_menu
+    end 
+end
+
 def initial_menu
-    puts "What would you like to do?" 
+    puts "\nWhat would you like to do?" 
     puts "1. Log in"
     puts "2. Sign up"
     puts "3. Exit"
-    input = gets.chomp
-    initial_logic(input)
 end
 
 def log_in
-    puts "Enter username to log in:"
+    puts "\nEnter username to log in:"
     username = gets.chomp
     if !User.find_by(name: username)
-        puts "Username not found!"
+        puts "\nUsername not found!"
         log_in
     else
         user = User.find_by(name: username)
     end
-    run_home_menu(user)                             #user.home_menu_selection
 end
 
 
 def sign_up
-    puts "Enter username to sign up:"
+    puts "\nEnter username to sign up:"
     username = gets.chomp
     if User.find_by(name: username)
-        puts "Username already exists!"
+        puts "\nUsername already exists!"
         sign_up
     else
-        User.create(name: username)         #user = User.create(name: username)
+        puts "\nUser created successfully!!"
+        User.create(name: username)
     end
-    log_in
+
 end
 
-def initial_logic(input)
-    case input
-    when "1"
-        log_in
-    when "2"
-        sign_up
-    when "3"
-        exit
-    else
-        puts "Unkown option!"
-        initial_menu
-    end
-end
 
 ################ HOME MENU ##############################################
 def run_home_menu(user)

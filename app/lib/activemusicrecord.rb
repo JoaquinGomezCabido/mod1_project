@@ -1,5 +1,6 @@
 require_relative "../../config/environment.rb"
 
+
 class CLI
     
     attr_accessor :user, :playlist
@@ -43,6 +44,7 @@ class CLI
         puts "1. Log in"
         puts "2. Sign up"
         puts "3. Exit"
+
     end
 
     def log_in

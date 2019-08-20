@@ -5,11 +5,7 @@ class User < ActiveRecord::Base
         Playlist.create(title: title, user_id: self.id)
     end
 
-    def print_playlists
-        i = 1
-        self.playlists.each do |playlist|
-            puts "#{i}. #{playlist.title}"
-            i += 1
-        end
+    def playlists_names
+        self.playlists.map{|playlist| playlist.title}
     end
 end

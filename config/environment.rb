@@ -7,6 +7,7 @@ require 'date'
 require 'json'
 require 'open-uri'
 require 'pry'
+require "tty-prompt"
 require_relative '../app/models/user.rb'
 require_relative '../app/models/playlist.rb'
 require_relative '../app/models/playlistsong.rb'

@@ -3,11 +3,7 @@ class Playlist < ActiveRecord::Base
     has_many :playlist_songs
     has_many :songs, through: :playlist_songs
 
-    def print_songs
-        i = 1
-        self.songs.each do |song|
-            puts "#{i}. #{song.title}"
-            i += 1
-        end
+    def song_names
+        self.songs.map{|song| song.title}
     end
 end

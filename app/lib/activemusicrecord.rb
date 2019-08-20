@@ -2,10 +2,11 @@ require_relative "../../config/environment.rb"
 
 
 class CLI
-    
+
     attr_accessor :user, :playlist
     
     def initialize
+        @prompt = TTY::Prompt.new
         @user = nil
         @playlist = nil
     end
@@ -13,170 +14,164 @@ class CLI
     ################# APP RUNNER ##############################################
     
     def app_runner
-        puts "********** Welcome to ActiveMusicRecords **********"
+        puts "\n*************** Welcome to ActiveMusicRecords ***************".colorize(:blue)
         run_initial_menu
     end
-        
-        
+    
+    
     ################# INITIAL MENU RUNNER ##############################################
-
+    
     def run_initial_menu
-        print_initial_menu
-        input = gets.chomp
+        initial_menu_input = initial_menu_choices
         
-        case input
-        when "1"
+        case initial_menu_input
+        when "Log in"
             log_in
             run_home_menu
-        when "2"
+        when "Sign up"
             sign_up
             run_initial_menu
-        when "3"
+        when "Exit"
             exit
-        else
-            puts "\nUnkown option!"
-            initial_menu
         end 
     end
 
-    def print_initial_menu
-        puts "\nWhat would you like to do?" 
-        puts "1. Log in"
-        puts "2. Sign up"
-        puts "3. Exit"
-
+    def initial_menu_choices
+        @prompt.select("\nWhat would you like to do?", ["Log in", "Sign up", "Exit"])
     end
-
+    
     def log_in
-        puts "\nEnter username to log in:"
-        username = gets.chomp
-        if !User.find_by(name: username)
-            puts "\nUsername not found!"
-            log_in
+        username = @prompt.ask("Enter username to log in:")
+        password = @prompt.mask("Enter your password")
+        if !User.find_by(name: username, password: password)
+            puts "\nIncorrect username or password!".colorize(:red)
+            run_initial_menu
         else
             @user = User.find_by(name: username)
+            puts "\nSuccesful log in!".colorize(:green)
         end
     end
 
 
     def sign_up
-        puts "\nEnter username to sign up:"
-        username = gets.chomp
+        username = @prompt.ask("Enter username to sign up:")
         if User.find_by(name: username)
-            puts "\nUsername already exists!"
-            sign_up
+            puts "\nUsername already exists!".colorize(:red)
+            run_initial_menu
         else
-            puts "\nUser created successfully!!"
-            User.create(name: username)
+            password = @prompt.mask("Set your password:")
+            puts "\nUser created successfully!!".colorize(:green)
+            User.create(name: username, password: password)
         end
     end
 
 
     ################# HOME MENU ##############################################
     def run_home_menu
-        print_home_menu
-        home_menu_input = gets.chomp
+        home_menu_input = home_menu_choices
 
         case home_menu_input
-        when "1"
-            puts "\nEnter the name of your playlist:"
-            playlist_name = gets.chomp
+        when "Create new playlist"
+            playlist_name = @prompt.ask("Enter the name of your playlist:")
             @user.create_playlist(playlist_name)
             @user = User.find(@user.id)
             run_home_menu
-        when "2"
-            puts "\nThese, are your existing playlists:"
-            @user.print_playlists
-            puts "\nPlease, select the playlist you want to open:"
-            playlist_number = gets.chomp.to_i
-            @playlist = @user.playlists[playlist_number - 1]
-            run_playlist_menu
-        when "3"
-            puts "\nThese, are your existing playlists:"
-            @user.print_playlists
-            puts "\nPlease, select the playlist you want to delete:"
-            playlist_number = gets.chomp.to_i
-            @user.playlists[playlist_number - 1].destroy
-            @user = User.find(@user.id)
+        when "Open existing playlist"
+            if @user.playlists
+                puts "These, are your existing playlists:"
+                playlist_selection = @prompt.select("Select the playlist you want to open:", @user.playlists_names)
+                @playlist = @user.playlists.find_by(title: playlist_selection)
+                run_playlist_menu
+            else
+                puts "\nNo existing playlists".colorize(:red)
+                run_home_menu
+            end
+        when "Delete existing playlist"
+            if @user.playlists
+                puts "These, are your existing playlists:"
+                playlist_selection = @prompt.select("Select the playlist you want to delete:", @user.playlists_names)
+                @playlist = @user.playlists.find_by(title: playlist_selection).destroy
+                @user = User.find(@user.id)
+                run_home_menu
+            else
+                puts "\nNo existing playlists".colorize(:red)
+                run_home_menu
+            end
+        when "Listen to a song"
+            song_name = @prompt.ask("Enter the song you want to search:")
+            song_list = song_search(song_name)
+            formatted_song_list = format_song_list(song_list)
+            song_selection = @prompt.select("Select the song you want to listen to:", formatted_song_list)
+            song_index = formatted_song_list.find_index(song_selection) 
+            puts "\n'#{song_list[song_index][:title]}' playing, enjoy!".colorize(:blue)
             run_home_menu
-        when "4"
-            puts "\nEnter the song you want to search:"
-            song_name = gets.chomp
-            song_search(song_name)
-        when "5"
+        when "Exit"
             exit
-        else
-            puts "\nUnkown option!"
-            run_home_menu
         end
     end
 
-    def print_home_menu
-        puts "\nWhat would you like to do?"
-        puts "1. Create new playlist"
-        puts "2. Open existing playlist"
-        puts "3. Delete existing playlist"
-        puts "4. Just search for a song"
-        puts "5. Exit"
+    def home_menu_choices
+        @prompt.select("What would you like to do?", 
+            ["Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Exit"])
     end
 
     def song_search(song_name)
         response = JSON.parse(open("https://api.deezer.com/search?q=track:#{song_name}").read)["data"][0...5]
-        i = 1
-        response.each do |song|
-            puts "#{i}. Title: #{song["title"]} - Artist: #{song["artist"]["name"]} - Album: #{song["album"]["title"]}"
-            puts "-------------------------------------------------------"
-            i += 1
+        formatted_response = response.map do |song|
+            {title: "#{song["title"]}", artist: "#{song["artist"]["name"]}", album: "#{song["album"]["title"]}"}
         end
     end
 
-    # ########################## PLAYLIST MENU #############################################
+    def format_song_list(song_list)
+        song_list.map do |song|
+            "Title: #{song[:title]} - Artist: #{song[:artist]} - Album: #{song[:album]}"
+        end
+    end
+
+    ########################### PLAYLIST MENU #############################################
 
     def run_playlist_menu
-        print_playlist_menu
-        playlist_menu_input = gets.chomp
+        playlist_menu_input = playlist_menu_choices
 
         case playlist_menu_input
-            when "1"
-                puts "\nEnter the song you want to add:"
-                song_name = gets.chomp
+            when "Add a new song"
+                song_name = @prompt.ask("Enter the song you want to add:")
                 song_list = song_search(song_name)
-                puts "\nPlease, select the song you want to add:"
-                song_number = gets.chomp.to_i
-                song = song_list[song_number - 1]
-                song_instance = Song.find_or_create_by(title: song["title"])
+                formatted_list = format_song_list(song_list)
+                song_selection = @prompt.select("Select the song you want to add:", formatted_list)
+                song_index = formatted_list.find_index(song_selection) 
+                song_instance = Song.find_or_create_by(title: song_list[song_index][:title])
                 PlaylistSong.find_or_create_by(song_id: song_instance.id, playlist_id: @playlist.id)
                 @playlist = @user.playlists.find(@playlist.id)
                 run_playlist_menu
-            when "2"
-                puts "\nPlease, select the song you want to delete:"
-                @playlist.print_songs
-                song_number = gets.chomp.to_i
-                song_id_to_delete = @playlist.songs[song_number - 1].id
-                PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete).destroy
-                @playlist = @user.playlists.find(@playlist.id)
+            when "Delete an existing song"
+                if !@playlist.songs.empty?
+                    song_selection = @prompt.select("Select the song you want to delete:", @playlist.song_names)
+                    song_id_to_delete = @playlist.songs.find_by(title: song_selection)
+                    PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete).destroy
+                    @playlist = @user.playlists.find(@playlist.id)
+                else
+                    puts "\nYou have no songs in this playlist".colorize(:red)
+                end
                 run_playlist_menu
-            when "3"
-                puts "\nThese are the current songs in this playlist:"
-                @playlist.print_songs
+            when "Play an existing song"
+                if !@playlist.songs.empty?
+                    song_to_play = @prompt.select("Select the song that you want to play", @playlist.song_names)
+                    puts "\n'#{song_to_play}' playing, enjoy!".colorize(:blue)
+                else
+                    puts "\nYou have no songs in this playlist".colorize(:red)
+                end
                 run_playlist_menu
-            when "4"
+            when "Return to Home Menu"
                 run_home_menu
-            when "5"
+            when "Exit"
                 exit
-            else
-                puts "\nUnkown option!"
-                run_playlist_menu
             end   
     end
 
-    def print_playlist_menu
-        puts "\nWhat would you want to do in this playlist?"
-        puts "1. Add a new song"
-        puts "2. Delete an existing song"
-        puts "3. Show all the songs"
-        puts "4. Return to Home Menu"
-        puts "5. Exit"
+    def playlist_menu_choices
+        @prompt.select("What would you want to do in this playlist?",
+            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Exit"])
     end
 end
 

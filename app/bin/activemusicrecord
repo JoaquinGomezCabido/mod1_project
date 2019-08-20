@@ -1,1 +1,3 @@
-ruby lib/run.rb
+require_relative "../lib/activemusicrecord.rb"
+
+run

@@ -11,3 +11,7 @@ gem "json"
 gem "pry"
 gem 'tty-prompt'
 gem 'colorize'
+gem 'launchy'
+gem 'tty-progressbar'
+gem 'tty-font'
+gem 'pastel'

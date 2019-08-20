@@ -1,1 +1,1 @@
-run play
+ruby lib/run.rb

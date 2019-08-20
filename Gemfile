@@ -9,3 +9,5 @@ gem "database_cleaner"
 gem "pry"
 gem "json"
 gem "pry"
+gem 'tty-prompt'
+gem 'colorize'

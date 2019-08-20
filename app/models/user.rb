@@ -4,4 +4,8 @@ class User < ActiveRecord::Base
     def create_playlist(title)
         Playlist.create(title: title, user_id: self.id)
     end
+
+    def playlists_names
+        self.playlists.map{|playlist| playlist.title}
+    end
 end

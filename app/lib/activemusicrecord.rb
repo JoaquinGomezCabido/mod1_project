@@ -26,7 +26,7 @@ class CLI
     end
     
     
-    ################# INITIAL MENU RUNNER ##############################################
+    ################# MENU RUNNERS ##############################################
     
     def run_initial_menu
         puts "\n********** LOGIN MENU **********"
@@ -45,10 +45,86 @@ class CLI
             exit
         end 
     end
+    
+    def run_home_menu
+        puts "\n********** HOME MENU **********"
+        puts "\n"
+        home_menu_input = home_menu_choices
+
+        case home_menu_input
+        when "Create new playlist"
+            create_playlist
+        when "Open existing playlist"
+            open_existing_playlist
+        when "Delete existing playlist"
+            delete_playlist
+        when "Listen to a song"
+            listen_to_a_song
+        when "Settings"
+            run_settings_menu
+        when "Exit"
+            good_bye_message
+            exit
+        end
+    end
+
+    def run_settings_menu
+        puts "\n********** SETTINGS MENU **********"
+        puts "\n"
+        input = settings_menu_choices
+        case input
+        when "Change Password"
+            change_password
+            run_home_menu
+        when "Delete my account"
+            delete_account
+            run_home_menu
+        when "Return to Home Menu"
+            run_home_menu
+        end
+    end
+
+    def run_playlist_menu
+        puts "\n********** PLAYLIST MENU **********"
+        puts "\n"
+        playlist_menu_input = playlist_menu_choices
+
+        case playlist_menu_input
+        when "Add a new song"
+            add_song
+        when "Delete an existing song"
+            delete_song
+        when "Play an existing song"
+            play_song
+        when "Return to Home Menu"
+            run_home_menu
+        when "Exit"
+            good_bye_message
+            exit
+        end   
+    end
+
+    ################# MENU CHOICES ##############################################
 
     def initial_menu_choices
         @prompt.select("What would you like to do?", ["Log in", "Sign up", "Exit"])
     end
+
+    def home_menu_choices
+        @prompt.select("What would you like to do?", 
+            ["Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Settings", "Exit"])
+    end
+
+    def settings_menu_choices
+        @prompt.select("\nWhat would you like to do?", ["Change Password", "Delete my account", "Return to Home Menu"])
+    end
+    
+    def playlist_menu_choices
+        @prompt.select("What would you want to do in this playlist?",
+            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Exit"])
+    end
+
+    ################# INTIAL MENU METHODS ##############################################
     
     def log_in
         username = @prompt.ask("Enter username to log in:")
@@ -76,47 +152,14 @@ class CLI
     end
 
 
-    ################# HOME MENU ##############################################
-    def run_home_menu
-        puts "\n********** HOME MENU **********"
-        puts "\n"
-        home_menu_input = home_menu_choices
+    ################# HOME MENU METHODS ##############################################
 
-        case home_menu_input
-        when "Create new playlist"
-            playlist_name = @prompt.ask("Enter the name of your playlist:")
-            @user.create_playlist(playlist_name)
-            @user = User.find(@user.id)
-            run_home_menu
-        when "Open existing playlist"
-            if !@user.playlists.empty?
-                @playlist = display_playlists("open")
-                run_playlist_menu
-            else
-                puts "\nNo existing playlists".colorize(:red)
-                run_home_menu
-            end
-        when "Delete existing playlist"
-            if !@user.playlists.empty?
-                @playlist = display_playlists("delete").destroy
-                @user = User.find(@user.id)
-                puts "\nPlaylist deleted successfuly".colorize(:green)
-                run_home_menu
-            else
-                puts "\nNo existing playlists".colorize(:red)
-                run_home_menu
-            end
-        when "Listen to a song"
-            song_chosen = choose_song("search", "listen to")
-            puts "\n'#{song_chosen[:title]}' playing, enjoy!".colorize(:blue)
-            Launchy.open("#{song_chosen[:preview]}")
-            run_home_menu
-        when "Settings"
-            settings_menu
-        when "Exit"
-            good_bye_message
-            exit
-        end
+    def create_playlist
+        playlist_name = @prompt.ask("Enter the name of your playlist:")
+        @user.create_playlist(playlist_name)
+        @user = User.find(@user.id)
+        puts "\nPlaylist created successfully".colorize(:green)
+        run_home_menu
     end
 
     def display_playlists(action)
@@ -125,26 +168,36 @@ class CLI
         @user.playlists.find_by(title: playlist_selection)
     end
 
-    def home_menu_choices
-        @prompt.select("What would you like to do?", 
-            ["Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Settings", "Exit"])
-    end
-
-    def settings_menu
-        puts "\n********** SETTINGS MENU **********"
-        puts "\n"
-        input = @prompt.select("\nWhat would you like to do?", ["Change Password", "Delete my account", "Return to Home Menu"])
-        case input
-        when "Change Password"
-            change_password
-            run_home_menu
-        when "Delete my account"
-            delete_account
-            run_home_menu
-        when "Return to Home Menu"
+    def open_existing_playlist
+        if !@user.playlists.empty?
+            @playlist = display_playlists("open")
+            run_playlist_menu
+        else
+            puts "\nNo existing playlists".colorize(:red)
             run_home_menu
         end
     end
+
+    def delete_playlist
+        if !@user.playlists.empty?
+            @playlist = display_playlists("delete").destroy
+            @user = User.find(@user.id)
+            puts "\nPlaylist deleted successfuly".colorize(:green)
+            run_home_menu  
+        else
+            puts "\nNo existing playlists".colorize(:red)
+            run_home_menu
+        end
+    end 
+
+    def listen_to_a_song
+        song_chosen = choose_song("search", "listen to")
+        puts "\n'#{song_chosen[:title]}' playing, enjoy!".colorize(:blue)
+        Launchy.open("#{song_chosen[:preview]}")
+        run_home_menu
+    end
+
+    ################# SETTING MENU METHODS ##############################################
     
     def change_password
         current_password = @prompt.mask("Enter current password:")
@@ -155,7 +208,7 @@ class CLI
             run_home_menu
         else
             puts ("\nIncorrect password").colorize(:red)
-            settings_menu
+            run_settings_menu
         end
     end
 
@@ -169,7 +222,7 @@ class CLI
             @user = User.update(@user.id, :password => new_password)
         else 
             puts "\nNew password confirmation does not match new password".colorize(:red)
-            settings_menu
+            run_settings_menu
         end
     end
 
@@ -188,7 +241,7 @@ class CLI
     ################  SONG SEARCH API #####################################################
 
     def song_search(song_name)
-        response = JSON.parse(open("https://api.deezer.com/search?q=#{song_name}").read)["data"][0...5]
+        response = JSON.parse(open("https://api.deezer.com/search?q=#{song_name}").read)["data"][0...10]
         if response
             formatted_response = response.map do |song|
                 {title: "#{song["title"]}", artist: "#{song["artist"]["name"]}", album: "#{song["album"]["title"]}", preview: "#{song["preview"]}"}
@@ -218,52 +271,43 @@ class CLI
         end
     end
 
-    ########################### PLAYLIST MENU #############################################
+    ########################### PLAYLIST MENU METHODS #########################################
 
-    def run_playlist_menu
-        puts "\n********** PLAYLIST MENU **********"
-        puts "\n"
-        playlist_menu_input = playlist_menu_choices
 
-        case playlist_menu_input
-            when "Add a new song"
-                song_chosen = choose_song("add", "add")
-                song_instance = Song.find_or_create_by(song_chosen)
-                PlaylistSong.find_or_create_by(song_id: song_instance.id, playlist_id: @playlist.id)
-                @playlist = @user.playlists.find(@playlist.id)
-                run_playlist_menu
-            when "Delete an existing song"
-                if !@playlist.songs.empty?
-                    song_selection = @prompt.select("Select the song you want to delete:", @playlist.song_names)
-                    song_id_to_delete = @playlist.songs.find_by(title: song_selection)
-                    PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete).destroy
-                    @playlist = @user.playlists.find(@playlist.id)
-                    puts "\nSong deleted from the playlist".colorize(:green)
-                else
-                    puts "\nYou have no songs in this playlist".colorize(:red)
-                end
-                run_playlist_menu
-            when "Play an existing song"
-                if !@playlist.songs.empty?
-                    song_to_play = @prompt.select("Select the song that you want to play", @playlist.song_names)
-                    puts "\n'#{song_to_play}' playing, enjoy!".colorize(:blue)
-                    Launchy.open(@playlist.songs.find_by(title: song_to_play)[:preview])
-                else
-                    puts "\nYou have no songs in this playlist".colorize(:red)
-                end
-                run_playlist_menu
-            when "Return to Home Menu"
-                run_home_menu
-            when "Exit"
-                good_bye_message
-                exit
-            end   
+    def add_song
+        song_chosen = choose_song("add", "add")
+        song_instance = Song.find_or_create_by(song_chosen)
+        PlaylistSong.find_or_create_by(song_id: song_instance.id, playlist_id: @playlist.id)
+        @playlist = @user.playlists.find(@playlist.id)
+        puts "\n Song added to your playlist".colorize(:green)
+        run_playlist_menu
     end
 
-    def playlist_menu_choices
-        @prompt.select("What would you want to do in this playlist?",
-            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Exit"])
+    def delete_song
+        if !@playlist.songs.empty?
+            song_selection = @prompt.select("Select the song you want to delete:", @playlist.song_names)
+            song_id_to_delete = @playlist.songs.find_by(title: song_selection)
+            PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete).destroy
+            @playlist = @user.playlists.find(@playlist.id)
+            puts "\nSong deleted from the playlist".colorize(:green)
+        else
+            puts "\nYou have no songs in this playlist".colorize(:red)
+        end
+        run_playlist_menu
     end
+
+    def play_song
+        if !@playlist.songs.empty?
+            song_to_play = @prompt.select("Select the song that you want to play", @playlist.song_names)
+            puts "\n'#{song_to_play}' playing, enjoy!".colorize(:blue)
+            Launchy.open(@playlist.songs.find_by(title: song_to_play)[:preview])
+        else
+            puts "\nYou have no songs in this playlist".colorize(:red)
+        end
+        run_playlist_menu
+    end
+
+    ################# EXIT METHOD ##############################################
 
     def good_bye_message
         puts "\n"

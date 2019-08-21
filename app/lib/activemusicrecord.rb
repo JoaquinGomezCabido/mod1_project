@@ -146,11 +146,12 @@ class CLI
         username = @prompt.ask("Enter username to sign up:")
         if User.find_by(name: username)
             puts "\nUsername '#{username}' already exists!".colorize(:red)
-            run_initial_menu
         else
-            password = @prompt.mask("Set your password:")
-            puts "\nUser '#{username}' created successfully!!".colorize(:green)
-            User.create(name: username, password: password)
+            password = check_password_valid
+            if password != "incorrect password"
+                puts "\nUser '#{username}' created successfully!!".colorize(:green)
+                User.create(name: username, password: password)
+            end
         end
     end
 
@@ -204,29 +205,30 @@ class CLI
 
     ################# SETTING MENU METHODS ##############################################
     
-    def change_password
-        current_password = @prompt.mask("Enter current password:")
-        
-        case current_password
-        when @user.password
-            set_new_password
-            run_home_menu
+    def check_password_valid
+        new_password = @prompt.mask("Enter new password") 
+        confirm_new_password = @prompt.mask("Confirm new password")
+        if new_password == confirm_new_password
+            new_password
         else
-            puts ("\nIncorrect password").colorize(:red)
-            run_settings_menu
+            puts "\nNew password confirmation does not match new password".colorize(:red)
+            "incorrect password"
         end
     end
 
-    def set_new_password
-        new_password = @prompt.mask("Enter new password") 
-        confirm_new_password = @prompt.mask("Confirm new password")
+    def change_password
+        current_password = @prompt.mask("Enter current password:")
         
-        case new_password
-        when confirm_new_password
-            puts "\nPassword changed successfully!".colorize(:green)
-            @user = User.update(@user.id, :password => new_password)
-        else 
-            puts "\nNew password confirmation does not match new password".colorize(:red)
+        if current_password == @user.password
+            password = check_password_valid
+                if password != "incorrect password"
+                    @user = User.update(@user.id, password: password)
+                    puts "\nPassword changed successfully!".colorize(:green)
+                else
+                    run_settings_menu
+                end
+        else
+            puts ("\nIncorrect password").colorize(:red)
             run_settings_menu
         end
     end

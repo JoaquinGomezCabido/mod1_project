@@ -3,11 +3,7 @@ class Playlist < ActiveRecord::Base
     has_many :playlist_songs
     has_many :songs, through: :playlist_songs
 
-    def list_song_attributes
-        self.songs.map{|song| {title: song.title, artist: song.artist, album: song.album, preview: song.preview}}
-    end
-
-    def formatted_list_song_attributes
-        self.songs.map{|song| "'#{song[:title]}' by '#{song[:artist]}'"}
+    def list_songs
+        self.songs.map{|song| {name: "'#{song.title}' by '#{song.artist}'", value: song.id}}
     end
 end

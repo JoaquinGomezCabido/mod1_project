@@ -13,6 +13,7 @@ require_relative '../app/models/user.rb'
 require_relative '../app/models/playlist.rb'
 require_relative '../app/models/playlistsong.rb'
 require_relative '../app/models/song.rb'
+require_relative '../app/lib/api_request.rb'
 
 Bundler.require
 

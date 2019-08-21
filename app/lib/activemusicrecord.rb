@@ -15,6 +15,7 @@ class CLI
         @playlist = nil
         @font = TTY::Font.new(:doom)
         @pastel = Pastel.new
+        @api = API.new
     end
     
     ################# APP RUNNER ##############################################
@@ -36,10 +37,8 @@ class CLI
         case initial_menu_input
         when "Log in"
             log_in
-            run_home_menu
         when "Sign up"
             sign_up
-            run_initial_menu
         when "Exit"
             good_bye_message
             exit
@@ -53,8 +52,7 @@ class CLI
 
         case home_menu_input
         when "Global Top 5 Songs"
-            Song.display_global_top_5
-            run_home_menu
+            global_top_5_songs
         when "Create new playlist"
             create_playlist
         when "Open existing playlist"
@@ -67,7 +65,6 @@ class CLI
             run_settings_menu
         when "Log out"
             log_out_message
-            run_initial_menu
         end
     end
 
@@ -78,10 +75,8 @@ class CLI
         case input
         when "Change Password"
             change_password
-            run_home_menu
         when "Delete my account"
             delete_account
-            run_home_menu
         when "Return to Home Menu"
             run_home_menu
         end
@@ -103,63 +98,70 @@ class CLI
             run_home_menu
         when "Log out"
             log_out_message
-            run_initial_menu
         end   
     end
 
     ################# MENU CHOICES ##############################################
 
     def initial_menu_choices
-        @prompt.select("What would you like to do?", ["Log in", "Sign up", "Exit"])
+        @prompt.select("What would you like to do?", ["Log in", "Sign up", "Exit"], per_page: 10)
     end
 
     def home_menu_choices
         @prompt.select("What would you like to do?", 
-            ["Global Top 5 Songs", "Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Settings", "Log out"])
+            ["Global Top 5 Songs", "Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Settings", "Log out"], per_page: 10)
     end
 
     def settings_menu_choices
-        @prompt.select("\nWhat would you like to do?", ["Change Password", "Delete my account", "Return to Home Menu"])
+        @prompt.select("\nWhat would you like to do?", ["Change Password", "Delete my account", "Return to Home Menu"], per_page: 10)
     end
     
     def playlist_menu_choices
         @prompt.select("What would you want to do in this playlist?",
-            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Log out"])
+            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Log out"], per_page: 10)
     end
 
     ################# INTIAL MENU METHODS ##############################################
     
     def log_in
-        username = @prompt.ask("Enter username to log in:")
-        password = @prompt.mask("Enter your password")
+        username = @prompt.ask("Enter username to log in:", required: true)
+        password = @prompt.mask("Enter your password:", required: true)
         if !User.find_by(name: username, password: password)
             puts "\nIncorrect username or password!".colorize(:red)
             run_initial_menu
         else
             @user = User.find_by(name: username)
             puts "\nSuccesful log in! Welcome, #{@user.name}!".colorize(:green)
+            run_home_menu
         end
     end
 
 
     def sign_up
-        username = @prompt.ask("Enter username to sign up:")
+        username = @prompt.ask("Enter username to sign up:", required: true)
         if User.find_by(name: username)
             puts "\nUsername '#{username}' already exists!".colorize(:red)
         else
             password = check_password_valid
             if password != "incorrect password"
-                puts "\nUser '#{username}' created successfully!!".colorize(:green)
-                User.create(name: username, password: password)
+                puts "\nUser '#{username}' created successfully!".colorize(:green)
+                @user = User.create(name: username, password: password)
+                run_home_menu
             end
         end
+        run_initial_menu
     end
 
 
     ################# HOME MENU METHODS ##############################################
 
+    def global_top_5_songs
+        Song.display_global_top_5
+        run_home_menu
+    end
+
     def create_playlist
-        playlist_name = @prompt.ask("Enter the name of your playlist:")
+        playlist_name = @prompt.ask("Enter the name of your playlist:", required: true)
         @user.create_playlist(playlist_name)
         @user = User.find(@user.id)
         puts "\nPlaylist '#{playlist_name}' created successfully".colorize(:green)
@@ -168,7 +170,7 @@ class CLI
 
     def display_playlists(action)
         puts "These, are your existing playlists:"
-        playlist_selection = @prompt.select("Select the playlist you want to #{action}:", @user.playlists_names)
+        playlist_selection = @prompt.select("Select the playlist you want to #{action}:", @user.playlists_names, per_page: 10)
         @user.playlists.find_by(title: playlist_selection)
     end
 
@@ -206,8 +208,8 @@ class CLI
     ################# SETTING MENU METHODS ##############################################
     
     def check_password_valid
-        new_password = @prompt.mask("Enter new password") 
-        confirm_new_password = @prompt.mask("Confirm new password")
+        new_password = @prompt.mask("Enter new password:", required: true) 
+        confirm_new_password = @prompt.mask("Confirm new password:", required: true)
         if new_password == confirm_new_password
             new_password
         else
@@ -217,46 +219,44 @@ class CLI
     end
 
     def change_password
-        current_password = @prompt.mask("Enter current password:")
+        current_password = @prompt.mask("Enter current password:", required: true)
         
         if current_password == @user.password
             password = check_password_valid
                 if password != "incorrect password"
                     @user = User.update(@user.id, password: password)
                     puts "\nPassword changed successfully!".colorize(:green)
-                else
-                    run_settings_menu
                 end
         else
             puts ("\nIncorrect password").colorize(:red)
-            run_settings_menu
         end
+        run_settings_menu
     end
 
     def delete_account
-        check = @prompt.yes?("Are you sure you want to delete your account?")
+        check = @prompt.no?("Are you sure you want to delete your account?")
         case check
-        when true
+        when false
             User.find(@user.id).destroy
             puts ("\nYour account has been deleted :(").colorize(:green)
             run_initial_menu
         else
-            run_home_menu
+            run_settings_menu
         end
     end
 
     ################  SONG SEARCH API #####################################################
 
-    def song_search(song_name)
-        response = JSON.parse(open("https://api.deezer.com/search?q=#{song_name}").read)["data"][0...10]
-        if response
-            formatted_response = response.map do |song|
-                {title: "#{song["title"]}", artist: "#{song["artist"]["name"]}", album: "#{song["album"]["title"]}", preview: "#{song["preview"]}"}
-            end
-        else
-            formatted_response = nil
-        end
-    end
+    # def song_search(song_name)
+    #     response = JSON.parse(open("https://api.deezer.com/search?q=#{song_name}").read)["data"][0...10]
+    #     if response
+    #         formatted_response = response.map do |song|
+    #             {title: "#{song["title"]}", artist: "#{song["artist"]["name"]}", album: "#{song["album"]["title"]}", preview: "#{song["preview"]}"}
+    #         end
+    #     else
+    #         formatted_response = nil
+    #     end
+    # end
 
     def format_song_list(song_list)
         song_list.map do |song|
@@ -265,11 +265,11 @@ class CLI
     end
 
     def choose_song(action1, action2)
-        song_name = @prompt.ask("Enter the song you want to #{action1}:")
-        song_list = song_search(song_name)
+        song_name = @prompt.ask("Enter the song you want to #{action1}:", required: true)
+        song_list = @api.song_search(song_name)
         if !song_list.empty?
             formatted_song_list = format_song_list(song_list)
-            song_selection = @prompt.select("Select the song you want to #{action2}:", formatted_song_list)
+            song_selection = @prompt.select("Select the song you want to #{action2}:", formatted_song_list, per_page: 10)
             song_index = formatted_song_list.find_index(song_selection) 
             song_list[song_index]
         else
@@ -292,12 +292,11 @@ class CLI
 
     def delete_song
         if !@playlist.songs.empty?
-            song_selection = @prompt.select("Select the song you want to delete:", @playlist.formatted_list_song_attributes)
-            song_number = @playlist.formatted_list_song_attributes.find_index(song_selection)
-            song_id_to_delete = @playlist.songs.find_by(@playlist.list_song_attributes[song_number])
-            PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete.id).destroy
+            song_selection = @prompt.select("Select the song you want to delete:", @playlist.list_songs, per_page: 10)
+            song_instance = Song.find(song_selection)
+            PlaylistSong.find_by(song_id: song_instance.id, playlist_id: @playlist.id).destroy
             @playlist = @user.playlists.find(@playlist.id)
-            puts "\nSong #{song_selection} deleted from the playlist '#{playlist.title}'".colorize(:green)
+            puts "\nSong '#{song_instance.title}' by '#{song_instance.artist}' deleted from the playlist '#{playlist.title}'".colorize(:green)
         else
             puts "\nYou have no songs in playlist '#{@playlist.title}'".colorize(:red)
         end
@@ -306,12 +305,11 @@ class CLI
 
     def play_song
         if !@playlist.songs.empty?
-            song_to_play = @prompt.select("Select the song that you want to play", @playlist.formatted_list_song_attributes)
-            puts "\n#{song_to_play} playing, enjoy!".colorize(:blue)
-            song_number = @playlist.formatted_list_song_attributes.find_index(song_to_play)
-            song_to_play = Song.find_or_create_by(@playlist.list_song_attributes[song_number])
-            song_to_play.increase_times_listened
-            Launchy.open(song_to_play[:preview])
+            song_to_play = @prompt.select("Select the song that you want to play", @playlist.list_songs, per_page: 10)
+            song_instance = Song.find(song_to_play)
+            puts "\n'#{song_instance.title}' by '#{song_instance.artist}' playing, enjoy!".colorize(:blue)
+            song_instance.increase_times_listened
+            Launchy.open(song_instance[:preview])
         else
             puts "\nYou have no songs in playlist '#{@playlist.title}'".colorize(:red)
         end
@@ -322,6 +320,7 @@ class CLI
 
     def log_out_message
         puts "\nYou have been logged out successfully".colorize(:green)
+        run_initial_menu
     end
 
     def good_bye_message

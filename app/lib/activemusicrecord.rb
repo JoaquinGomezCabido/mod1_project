@@ -52,6 +52,9 @@ class CLI
         home_menu_input = home_menu_choices
 
         case home_menu_input
+        when "Global Top 5 Songs"
+            Song.display_global_top_5
+            run_home_menu
         when "Create new playlist"
             create_playlist
         when "Open existing playlist"
@@ -62,9 +65,9 @@ class CLI
             listen_to_a_song
         when "Settings"
             run_settings_menu
-        when "Exit"
-            good_bye_message
-            exit
+        when "Log out"
+            log_out_message
+            run_initial_menu
         end
     end
 
@@ -98,9 +101,9 @@ class CLI
             play_song
         when "Return to Home Menu"
             run_home_menu
-        when "Exit"
-            good_bye_message
-            exit
+        when "Log out"
+            log_out_message
+            run_initial_menu
         end   
     end
 
@@ -112,7 +115,7 @@ class CLI
 
     def home_menu_choices
         @prompt.select("What would you like to do?", 
-            ["Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Settings", "Exit"])
+            ["Global Top 5 Songs", "Create new playlist", "Open existing playlist", "Delete existing playlist", "Listen to a song", "Settings", "Log out"])
     end
 
     def settings_menu_choices
@@ -121,7 +124,7 @@ class CLI
     
     def playlist_menu_choices
         @prompt.select("What would you want to do in this playlist?",
-            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Exit"])
+            ["Add a new song", "Delete an existing song", "Play an existing song", "Return to Home Menu", "Log out"])
     end
 
     ################# INTIAL MENU METHODS ##############################################
@@ -134,7 +137,7 @@ class CLI
             run_initial_menu
         else
             @user = User.find_by(name: username)
-            puts "\nSuccesful log in!".colorize(:green)
+            puts "\nSuccesful log in! Welcome, #{@user.name}!".colorize(:green)
         end
     end
 
@@ -142,11 +145,11 @@ class CLI
     def sign_up
         username = @prompt.ask("Enter username to sign up:")
         if User.find_by(name: username)
-            puts "\nUsername already exists!".colorize(:red)
+            puts "\nUsername '#{username}' already exists!".colorize(:red)
             run_initial_menu
         else
             password = @prompt.mask("Set your password:")
-            puts "\nUser created successfully!!".colorize(:green)
+            puts "\nUser '#{username}' created successfully!!".colorize(:green)
             User.create(name: username, password: password)
         end
     end
@@ -158,7 +161,7 @@ class CLI
         playlist_name = @prompt.ask("Enter the name of your playlist:")
         @user.create_playlist(playlist_name)
         @user = User.find(@user.id)
-        puts "\nPlaylist created successfully".colorize(:green)
+        puts "\nPlaylist '#{playlist_name}' created successfully".colorize(:green)
         run_home_menu
     end
 
@@ -182,7 +185,7 @@ class CLI
         if !@user.playlists.empty?
             @playlist = display_playlists("delete").destroy
             @user = User.find(@user.id)
-            puts "\nPlaylist deleted successfuly".colorize(:green)
+            puts "\nPlaylist '#{@playlist.title}' deleted successfuly".colorize(:green)
             run_home_menu  
         else
             puts "\nNo existing playlists".colorize(:red)
@@ -192,7 +195,9 @@ class CLI
 
     def listen_to_a_song
         song_chosen = choose_song("search", "listen to")
-        puts "\n'#{song_chosen[:title]}' playing, enjoy!".colorize(:blue)
+        puts "\n'#{song_chosen[:title]}' by '#{song_chosen[:artist]}' playing, enjoy!".colorize(:blue)
+        song_to_listen = Song.find_or_create_by(song_chosen)
+        song_to_listen.increase_times_listened
         Launchy.open("#{song_chosen[:preview]}")
         run_home_menu
     end
@@ -266,7 +271,7 @@ class CLI
             song_index = formatted_song_list.find_index(song_selection) 
             song_list[song_index]
         else
-            puts "\nSong not found, please try another one".colorize(:red)
+            puts "\nSong '#{song_name}' not found, please try another one".colorize(:red)
             choose_song(action1, action2)
         end
     end
@@ -279,35 +284,43 @@ class CLI
         song_instance = Song.find_or_create_by(song_chosen)
         PlaylistSong.find_or_create_by(song_id: song_instance.id, playlist_id: @playlist.id)
         @playlist = @user.playlists.find(@playlist.id)
-        puts "\n Song added to your playlist".colorize(:green)
+        puts "\n Song '#{song_chosen[:title]}' by '#{song_chosen[:artist]}' added to your playlist '#{playlist.title}'".colorize(:green)
         run_playlist_menu
     end
 
     def delete_song
         if !@playlist.songs.empty?
-            song_selection = @prompt.select("Select the song you want to delete:", @playlist.song_names)
-            song_id_to_delete = @playlist.songs.find_by(title: song_selection)
-            PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete).destroy
+            song_selection = @prompt.select("Select the song you want to delete:", @playlist.formatted_list_song_attributes)
+            song_number = @playlist.formatted_list_song_attributes.find_index(song_selection)
+            song_id_to_delete = @playlist.songs.find_by(@playlist.list_song_attributes[song_number])
+            PlaylistSong.find_by(playlist_id: @playlist.id, song_id: song_id_to_delete.id).destroy
             @playlist = @user.playlists.find(@playlist.id)
-            puts "\nSong deleted from the playlist".colorize(:green)
+            puts "\nSong #{song_selection} deleted from the playlist '#{playlist.title}'".colorize(:green)
         else
-            puts "\nYou have no songs in this playlist".colorize(:red)
+            puts "\nYou have no songs in playlist '#{@playlist.title}'".colorize(:red)
         end
         run_playlist_menu
     end
 
     def play_song
         if !@playlist.songs.empty?
-            song_to_play = @prompt.select("Select the song that you want to play", @playlist.song_names)
-            puts "\n'#{song_to_play}' playing, enjoy!".colorize(:blue)
-            Launchy.open(@playlist.songs.find_by(title: song_to_play)[:preview])
+            song_to_play = @prompt.select("Select the song that you want to play", @playlist.formatted_list_song_attributes)
+            puts "\n#{song_to_play} playing, enjoy!".colorize(:blue)
+            song_number = @playlist.formatted_list_song_attributes.find_index(song_to_play)
+            song_to_play = Song.find_or_create_by(@playlist.list_song_attributes[song_number])
+            song_to_play.increase_times_listened
+            Launchy.open(song_to_play[:preview])
         else
-            puts "\nYou have no songs in this playlist".colorize(:red)
+            puts "\nYou have no songs in playlist '#{@playlist.title}'".colorize(:red)
         end
         run_playlist_menu
     end
 
     ################# EXIT METHOD ##############################################
+
+    def log_out_message
+        puts "\nYou have been logged out successfully".colorize(:green)
+    end
 
     def good_bye_message
         puts "\n"

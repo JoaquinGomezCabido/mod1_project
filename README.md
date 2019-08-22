@@ -23,11 +23,11 @@ The classes use a database made of 4 tables: users, playlists, songs and playlis
 
 The CLI application uses gems to enhance the user experience. The gems used are:
 
-- gem 'json': allows the user to search for song information through an API. The API used is provided by Deezer ( https://www.deezer.com/en/).
-- gem 'tty-prompt': allows the application to use a larger variety of prompts like yes/no, hide answers when asking for the password, ..etc
-- gem 'colorize': allows to change the color for some outputs. The color green is used when an action was successful, red    when it failed and blue when information is returned such as details of the song playing.
-- gem 'launchy': allows to open the url of the song preview if the user wants to listen to a song.
-- gem 'tty-font': allows to format text with different fonts for the welcome and exit message.
-- gem 'pastel': allows to change the color of the welcome and exit messsage.
+- `gem 'json'`: allows the user to search for song information through an API. The API used is provided by Deezer ( https://www.deezer.com/en/).
+- `gem 'tty-prompt'`: allows the application to use a larger variety of prompts like yes/no, hide answers when asking for the password, ..etc
+- `gem 'colorize'`: allows to change the color for some outputs. The color green is used when an action was successful, red    when it failed and blue when information is returned such as details of the song playing.
+- `gem 'launchy'`: allows to open the url of the song preview if the user wants to listen to a song.
+- `gem 'tty-font'`: allows to format text with different fonts for the welcome and exit message.
+- `gem 'pastel'`: allows to change the color of the welcome and exit messsage.
 
-`To run the Active Music Record app, type "ruby app/bin/activemusicrecord" in your terminal.`
+To run the Active Music Record app, type `ruby app/bin/activemusicrecord` in your terminal.

@@ -162,9 +162,13 @@ class CLI
 
     def create_playlist
         playlist_name = @prompt.ask("Enter the name of your playlist:", required: true)
-        @user.create_playlist(playlist_name)
-        @user = User.find(@user.id)
-        puts "\nPlaylist '#{playlist_name}' created successfully".colorize(:green)
+        if @user.playlists.find_by(title: playlist_name)
+            puts "\nPlaylist '#{playlist_name}' already exist".colorize(:red)
+        else
+            @user.create_playlist(playlist_name)
+            @user = User.find(@user.id)
+            puts "\nPlaylist '#{playlist_name}' created successfully".colorize(:green)
+        end
         run_home_menu
     end
 
@@ -247,17 +251,6 @@ class CLI
 
     ################  SONG SEARCH API #####################################################
 
-    # def song_search(song_name)
-    #     response = JSON.parse(open("https://api.deezer.com/search?q=#{song_name}").read)["data"][0...10]
-    #     if response
-    #         formatted_response = response.map do |song|
-    #             {title: "#{song["title"]}", artist: "#{song["artist"]["name"]}", album: "#{song["album"]["title"]}", preview: "#{song["preview"]}"}
-    #         end
-    #     else
-    #         formatted_response = nil
-    #     end
-    # end
-
     def format_song_list(song_list)
         song_list.map do |song|
             "Title: #{song[:title]} - Artist: #{song[:artist]} - Album: #{song[:album]}"
@@ -283,10 +276,14 @@ class CLI
 
     def add_song
         song_chosen = choose_song("add", "add")
-        song_instance = Song.find_or_create_by(song_chosen)
-        PlaylistSong.find_or_create_by(song_id: song_instance.id, playlist_id: @playlist.id)
-        @playlist = @user.playlists.find(@playlist.id)
-        puts "\n Song '#{song_chosen[:title]}' by '#{song_chosen[:artist]}' added to your playlist '#{playlist.title}'".colorize(:green)
+        if @playlist.songs.find_by(song_chosen)
+            puts "\n Song '#{song_chosen[:title]}' by '#{song_chosen[:artist]}' is already in your playlist '#{playlist.title}'".colorize(:red)
+        else
+            song_instance = Song.find_or_create_by(song_chosen)
+            PlaylistSong.find_or_create_by(song_id: song_instance.id, playlist_id: @playlist.id)
+            @playlist = @user.playlists.find(@playlist.id)
+            puts "\n Song '#{song_chosen[:title]}' by '#{song_chosen[:artist]}' added to your playlist '#{playlist.title}'".colorize(:green)
+        end
         run_playlist_menu
     end
 
